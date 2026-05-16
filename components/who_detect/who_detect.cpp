@@ -130,6 +130,18 @@ void WhoDetect::rescale_detect_result(std::list<dl::detect::result_t> &result)
     }
 }
 
+void WhoDetect::extract_face(dl::image::img_t &dst, const dl::image::img_t &src, const dl::detect::result_t &face)
+{
+    dl::image::ImageTransformer transformer;
+    transformer.set_src_img(src);
+    transformer.set_dst_img(dst);
+
+    std::vector<int> crop_area = {(int)face.box[0], (int)face.box[1], (int)face.box[2], (int)face.box[3]};
+    transformer.set_src_img_crop_area(crop_area);
+
+    transformer.transform();
+}
+
 bool WhoDetect::run(const configSTACK_DEPTH_TYPE uxStackDepth, UBaseType_t uxPriority, const BaseType_t xCoreID)
 {
     if (!m_model) {
