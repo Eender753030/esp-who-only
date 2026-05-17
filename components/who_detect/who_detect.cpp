@@ -97,21 +97,49 @@ void WhoDetect::task()
 
 void WhoDetect::rescale_detect_result(std::list<dl::detect::result_t> &result)
 {
+    if (result.empty()) {
+        return;
+    }
+
+    dl::detect::result_t *largest_face = nullptr;
+    float max_area = 0;
+
     for (auto &r : result) {
+        // Rescale bounding box to original frame size
         r.box[0] *= m_inv_rescale_x;
         r.box[1] *= m_inv_rescale_y;
         r.box[2] *= m_inv_rescale_x;
         r.box[3] *= m_inv_rescale_y;
         r.limit_box(m_rescale_max_w, m_rescale_max_h);
-        if (!r.keypoint.empty()) {
-            assert(r.keypoint.size() == 10);
-            for (int i = 0; i < 5; i++) {
-                r.keypoint[2 * i] *= m_inv_rescale_x;
-                r.keypoint[2 * i + 1] *= m_inv_rescale_y;
-            }
-            r.limit_keypoint(m_rescale_max_w, m_rescale_max_h);
+
+        // Remove keypoints as they are unused
+        r.keypoint.clear();
+
+        // Find the largest face (assumed to be the closest one)
+        float area = (r.box[2] - r.box[0]) * (r.box[3] - r.box[1]);
+        if (area > max_area) {
+            max_area = area;
+            largest_face = &r;
         }
     }
+
+    if (largest_face) {
+        dl::detect::result_t final_face = *largest_face;
+        result.clear();
+        result.push_back(final_face);
+    }
+}
+
+void WhoDetect::extract_face(dl::image::img_t &dst, const dl::image::img_t &src, const dl::detect::result_t &face)
+{
+    dl::image::ImageTransformer transformer;
+    transformer.set_src_img(src);
+    transformer.set_dst_img(dst);
+
+    std::vector<int> crop_area = {(int)face.box[0], (int)face.box[1], (int)face.box[2], (int)face.box[3]};
+    transformer.set_src_img_crop_area(crop_area);
+
+    transformer.transform();
 }
 
 bool WhoDetect::run(const configSTACK_DEPTH_TYPE uxStackDepth, UBaseType_t uxPriority, const BaseType_t xCoreID)

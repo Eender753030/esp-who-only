@@ -21,6 +21,7 @@ public:
     void set_fps(float fps);
     void set_detect_result_cb(const std::function<void(const result_t &)> &result_cb);
     void set_cleanup_func(const std::function<void()> &cleanup_func);
+    static void extract_face(dl::image::img_t &dst, const dl::image::img_t &src, const dl::detect::result_t &face);
     bool run(const configSTACK_DEPTH_TYPE uxStackDepth, UBaseType_t uxPriority, const BaseType_t xCoreID) override;
     bool stop_async() override;
     bool pause_async() override;

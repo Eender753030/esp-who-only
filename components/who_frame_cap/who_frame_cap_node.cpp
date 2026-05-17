@@ -191,15 +191,17 @@ void WhoDecodeNode::cleanup()
 cam_fb_t *WhoDecodeNode::process(who::cam::cam_fb_t *fb)
 {
     auto timestamp = fb->timestamp;
-#if CONFIG_IDF_TARGET_ESP32P4
-    uint32_t caps = 0;
-#else
-    uint32_t caps = dl::image::DL_IMAGE_CAP_RGB565_BIG_ENDIAN;
+    auto pix_type = m_pix_type;
+#if !CONFIG_IDF_TARGET_ESP32P4
+    if (pix_type == dl::image::DL_IMAGE_PIX_TYPE_RGB565LE) {
+        pix_type = dl::image::DL_IMAGE_PIX_TYPE_RGB565BE;
+    }
 #endif
+
 #if CONFIG_SOC_JPEG_CODEC_SUPPORTED
-    auto img = hw_decode_jpeg({fb->buf, fb->len}, m_pix_type, caps);
+    auto img = hw_decode_jpeg({fb->buf, fb->len}, pix_type);
 #else
-    auto img = sw_decode_jpeg({fb->buf, fb->len}, m_pix_type, caps);
+    auto img = sw_decode_jpeg({fb->buf, fb->len}, pix_type);
 #endif
     // Sometimes may fail to decode a corrupted frame.
     if (!img.data) {
@@ -241,7 +243,7 @@ WhoPPAResizeNode::WhoPPAResizeNode(const std::string &name,
         img.height = dst_h;
         img.pix_type = dst_pix_type;
         if (i == 0) {
-            m_buf_size = dl::image::align_up(dl::image::get_img_byte_size(img), align);
+            m_buf_size = dl::image::align_up(img.bytes(), align);
         }
         img.data = heap_caps_aligned_calloc(align, 1, m_buf_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA);
     }

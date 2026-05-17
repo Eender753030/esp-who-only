@@ -1,6 +1,14 @@
 #pragma once
 #include "who_recognition.hpp"
+#if __has_include("bsp/esp-bsp.h")
 #include "bsp/esp-bsp.h"
+#else
+#ifndef BSP_LCD_H_RES
+#define BSP_LCD_H_RES 240
+#define BSP_LCD_V_RES 240
+#endif
+#endif
+
 
 namespace who {
 namespace button {
