@@ -6,7 +6,53 @@
 #elif CONFIG_IDF_TARGET_ESP32P4
 #include "linux/videodev2.h"
 #endif
+// Modification: Make BSP optional and provide fallback for generic S3
+#if __has_include("bsp/esp-bsp.h")
 #include "bsp/esp-bsp.h"
+#else
+// Fallback definitions for generic S3 hardware
+#define BSP_LCD_H_RES 240
+#define BSP_LCD_V_RES 240
+
+// Dummy I2C init if BSP is missing
+#include "esp_err.h"
+static inline esp_err_t bsp_i2c_init() { return ESP_OK; }
+
+// Default camera config (based on S3-EYE)
+#include "esp_camera.h"
+#include "driver/ledc.h"
+#ifndef BSP_CAMERA_DEFAULT_CONFIG
+#define BSP_CAMERA_DEFAULT_CONFIG                      \
+    {                                                  \
+        .pin_pwdn = -1,                                \
+        .pin_reset = -1,                               \
+        .pin_xclk = 15,                                \
+        .pin_sccb_sda = 4,                             \
+        .pin_sccb_scl = 5,                             \
+        .pin_d7 = 16,                                  \
+        .pin_d6 = 17,                                  \
+        .pin_d5 = 18,                                  \
+        .pin_d4 = 12,                                  \
+        .pin_d3 = 10,                                  \
+        .pin_d2 = 8,                                   \
+        .pin_d1 = 9,                                   \
+        .pin_d0 = 11,                                  \
+        .pin_vsync = 6,                                \
+        .pin_href = 7,                                 \
+        .pin_pclk = 13,                                \
+        .xclk_freq_hz = 16000000,                      \
+        .ledc_timer = LEDC_TIMER_0,                    \
+        .ledc_channel = LEDC_CHANNEL_0,                \
+        .pixel_format = PIXFORMAT_RGB565,              \
+        .frame_size = FRAMESIZE_QVGA,                  \
+        .jpeg_quality = 12,                            \
+        .fb_count = 2,                                 \
+        .fb_location = CAMERA_FB_IN_PSRAM,             \
+        .grab_mode = CAMERA_GRAB_WHEN_EMPTY,           \
+        .sccb_i2c_port = -1,                           \
+    }
+#endif
+#endif
 
 namespace who {
 namespace cam {
@@ -41,7 +87,7 @@ inline cam_fb_fmt_t pix_fmt2cam_fb_fmt(pixformat_t pix_fmt)
 inline cam_fb_fmt_t dl_pix_fmt2cam_fb_fmt(dl::image::pix_type_t dl_pix_fmt)
 {
     switch (dl_pix_fmt) {
-    case dl::image::DL_IMAGE_PIX_TYPE_RGB565:
+    case dl::image::DL_IMAGE_PIX_TYPE_RGB565LE:
         return cam_fb_fmt_t::CAM_FB_FMT_RGB565;
     case dl::image::DL_IMAGE_PIX_TYPE_RGB888:
         return cam_fb_fmt_t::CAM_FB_FMT_RGB888;
@@ -112,7 +158,7 @@ typedef struct cam_fb_s {
     cam_fb_s(const dl::image::img_t &img, const struct timeval &time)
     {
         buf = img.data;
-        len = dl::image::get_img_byte_size(img);
+        len = img.bytes();
         width = img.width;
         height = img.height;
         format = dl_pix_fmt2cam_fb_fmt(img.pix_type);
@@ -124,7 +170,7 @@ typedef struct cam_fb_s {
         return {.data = buf,
                 .width = width,
                 .height = height,
-                .pix_type = format == who::cam::cam_fb_fmt_t::CAM_FB_FMT_RGB565 ? dl::image::DL_IMAGE_PIX_TYPE_RGB565
+                .pix_type = format == who::cam::cam_fb_fmt_t::CAM_FB_FMT_RGB565 ? dl::image::DL_IMAGE_PIX_TYPE_RGB565LE
                                                                                 : dl::image::DL_IMAGE_PIX_TYPE_RGB888};
     }
 } cam_fb_t;
