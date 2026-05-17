@@ -1,3 +1,5 @@
+This repository is a specialized fork of ESP-WHO, optimized for facial recognition and image capture on the ESP32-S3.
+
 # ESP-WHO [[中文]](./README_CN.md)
 
 ESP-WHO is an image processing development platform based on Espressif chips. It contains development examples that may be applied in practical applications.
